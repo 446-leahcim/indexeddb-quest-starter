@@ -138,10 +138,17 @@ const createPreview = $("#create-preview");
 
 // The order each class wants its stats in (best number first).
 const SUGGESTED = {
+  Artificer: ["intelligence", "constitution", "dexterity", "wisdom", "charisma", "strength"],
+  Barbarian:["strength", "constitution", "dexterity", "charisma", "wisdom", "intelligence"],
+  Bard:["charisma", "constitution", "dexterity", "wisdom","intelligence", "strength"],
+  cleric: ["wisdom", "constitution", "strength", "dexterity", "charisma", "intelligence"],
+  Druid: ["wisdom", "constitution", "strength", "dexterity", "charisma", "intelligence"],
   fighter: ["strength", "constitution", "dexterity", "wisdom", "charisma", "intelligence"],
+  Monk: ["dexterity", "constitution", "strength", "wisdom", "charisma", "intelligence"],
+  Paladin: ["charisma", "constitution", "wisdom", "strength", "intelligence", "dexterity"],
   rogue: ["dexterity", "constitution", "charisma", "wisdom", "intelligence", "strength"],
   wizard: ["intelligence", "constitution", "dexterity", "wisdom", "charisma", "strength"],
-  cleric: ["wisdom", "constitution", "strength", "dexterity", "charisma", "intelligence"],
+ 
 };
 
 let draft = null; // { heroClass, dice: [{ id, value }], placed: { strength: dieId, ... } }
