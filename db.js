@@ -5,7 +5,7 @@
 // like the spec, so your teacher can open DevTools and find everything.
 
 const DB_NAME = "questDB";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // ALREADY DONE: wraps an IndexedDB request in a promise so you can use await.
 function promisify(request) {
@@ -108,11 +108,16 @@ async function getInventory(heroName) {
 // Takes 1 away from qty. At 0, the item leaves the bag.
 async function removeItem(heroName, itemId) {
   const db = await openDB();
-  const store = db.transaction("items", "readwrite").objectStore("items");
-  // if() {
-
-  //   await promisify(store.put(item));
-  // }
+  const store = db.transaction("inventory", "readwrite").objectStore("inventory");
+  const id = heroName + "-" + itemId;
+  const item = await promisify(store.get(id));
+  if (!item) throw new Error(`"${itemId}" is not in ${heroName}'s inventory.`);
+  if (item.qty <= 1) {
+    await promisify(store.delete(id));
+  } else {
+    item.qty -= 1;
+    await promisify(store.put(item));
+  }
 }
 
 // ---------- Level 2: Powers ----------
@@ -120,48 +125,62 @@ async function removeItem(heroName, itemId) {
 //   { powerId: "magic-missile", name: "Magic Missile", description: "...", learnAt: 1 }
 // Saves that the hero knows this power.
 async function learnPower(heroName, power) {
-// const powers = {
-//     id: id,
-//     hero: heroName,
-//     powerID: powerID,
-//     name: name,
-//     description: description,
-//     learnAt: 1,
-//   }
-  throw new Error("learnPower() is not built yet (Level 2)");
+const powers = {
+    id: id,
+    hero: heroName,
+    powerID: power.powerID,
+    name: name,
+    description: description,
+    learnAt: 1,
+  }
+  await withDB((db) => withTransaction(db, "powers", "readwrite", (transaction) => {
+    return promisify(transaction.objectStore("powers").put(record));
+  }));
 }
 
 // heroName: whose powers. Gives back ONLY that hero's powers.
 async function getPowers(heroName) {
-  // const db = await openDB();
-  // const store = db.transaction("powers").objectStore("powers");
-  // await promisify(store.getAll());
-  throw new Error("getPowers() is not built yet (Level 2)");
+   return withDB((db) => withTransaction(db, "powers", "readonly", async (transaction) => {
+    const records = await promisify(transaction.objectStore("powers").getAll());
+    return records.filter((power) => power.hero === heroName);
+  }));
 }
 
 // ---------- Level 2: Delete ----------
 // name: a hero's name. Removes the hero AND everything that belongs to them
 // (their items and powers, and at Level 3, their journal too).
 async function deleteHero(name) {
-  // const db = await openDB();
-  // const store = db.transaction("powers", "readwrite").objectStore("powers");
-  // await promisify(store.put(powers));
-  throw new Error("deleteHero() is not built yet (Level 2)");
+   const stores = ["heroes", "inventory", "powers", "journal"];
+  await withDB((db) => withTransaction(db, stores, "readwrite", async (transaction) => {
+    const heroDelete = promisify(transaction.objectStore("heroes").delete(name));
+    const cleanup = stores.slice(1).map((storeName) => {
+      return deleteRecordsForHero(transaction.objectStore(storeName), name);
+    });
+    await Promise.all([heroDelete, ...cleanup]);
+  }));
 }
 
 // ---------- Level 3: Adventure journal (version 2) ----------
 // heroName: whose journal. text: what happened, like "Beat a Goblin. +30 XP".
 // Saves a new journal entry.
 async function addJournal(heroName, text) {
-  // const journal = {
-  //   hero: hero,
-  //   text: text,
-  //   createdAt: "2026-10-10T17:05:40.00Z",
-  // }
-  throw new Error("addJournal() is not built yet (Level 2");
+   const entry = {
+    hero: heroName,
+    text,
+    createdAt: new Date().toISOString(),
+  };
+  await withDB((db) => withTransaction(db, "journal", "readwrite", (transaction) => {
+    return promisify(transaction.objectStore("journal").add(entry));
+  }));
 }
+
 
 // heroName: whose journal. Gives back ONLY that hero's entries, newest first.
 async function getJournal(heroName) {
-  throw new Error("getJournal() is not built yet (Level 3)");
+ return withDB((db) => withTransaction(db, "journal", "readonly", async (transaction) => {
+    const records = await promisify(transaction.objectStore("journal").getAll());
+    return records
+      .filter((entry) => entry.hero === heroName)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id);
+  }));
 }
